@@ -3,8 +3,11 @@
 Web para el móvil que muestra las plazas libres de los aparcamientos públicos de Girona.
 
 - **Mapa** (Leaflet + OpenStreetMap) con los 11 aparcamientos municipales y Saba Estació. Capacidades oficiales del [Ajuntament de Girona](https://web.girona.cat/mobilitat/aparcaments-municipals).
-- **Estimación de ocupación** según el día y la hora, con selector «¿Cuándo llegas?».
-- **Avisos de los conductores** («Hay sitio / Pocas / Lleno») guardados en Supabase y enviados al instante a todos con Supabase Realtime. Un aviso de los últimos 45 minutos tiene prioridad sobre la estimación.
+- **Plazas libres reales** de los parkings de Saba: una Edge Function de Supabase (`saba-live`) lee cada 3 minutos el dato que Saba publica en su web y lo guarda en `parking_live`. Se lanza con `pg_cron`.
+- **Avisos de los conductores** («Hay sitio / Pocas / Lleno») guardados en `parking_reports` y enviados al instante con Supabase Realtime.
+- **«Disponibilidad desconocida»** cuando no hay dato real ni aviso reciente. La previsión por hora solo aparece como pista, nunca como número.
+- **Ficha por parking**: plazas totales, ocupadas (si hay dato), dirección, horario, operador y enlace a las tarifas oficiales.
+- **Zona azul y verde**: horarios y tarifas oficiales (no hay datos de ocupación en la calle).
 - **Cerca de mí**: ordena los parkings por distancia.
 - **Instalable** en el móvil (PWA) y abre sin conexión mostrando la estimación.
 
