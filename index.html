@@ -131,18 +131,18 @@ input[type=range]{flex:1;min-width:120px;accent-color:var(--sign)}
 // ---------- Datos: capacidad oficial (web.girona.cat) + Saba ----------
 // zone: 'centre' (Barri Vell / Mercadal), 'eixample', 'periferia', 'hospital', 'estacio'
 const PARKINGS = [
-  {id:"emili-grahit", name:"Emili Grahit", cap:326, mode:"rot", op:"TMG (municipal)", lat:41.9768, lng:2.8113, zone:"eixample"},
-  {id:"miquel-palol", name:"Pl. Miquel de Palol", cap:218, mode:"rot", op:"TMG (municipal)", lat:41.9789, lng:2.8139, zone:"eixample"},
-  {id:"pallol", name:"Pl. del Pallol", cap:40, mode:"abo", op:"TMG (municipal)", lat:41.9873, lng:2.8247, zone:"centre"},
-  {id:"calvet", name:"Pl. Calvet i Rubalcaba", cap:380, mode:"rot", op:"Parking Pl. Catalunya", lat:41.9822, lng:2.8196, zone:"centre"},
-  {id:"vista-alegre", name:"Parc de Vista Alegre", cap:90, mode:"rot", op:"Guimerà Nou", lat:41.9800, lng:2.8270, zone:"periferia"},
-  {id:"u-octubre", name:"Pl. U d'Octubre / Josep Pla", cap:407, mode:"rot", op:"Parking Pl. Constitució", lat:41.9800, lng:2.8180, zone:"eixample"},
-  {id:"pompeu-fabra", name:"Generalitat / Pl. Pompeu Fabra (Saba Santa Caterina)", cap:444, mode:"rot", op:"Saba", lat:41.9814, lng:2.8207, zone:"centre"},
-  {id:"berenguer", name:"Pl. Berenguer Carnisser", cap:427, mode:"rot", op:"Saba", lat:41.9728, lng:2.8155, zone:"periferia"},
-  {id:"santa-eugenia", name:"Pl. Santa Eugènia", cap:345, mode:"rot", op:"Empark / Telpark", lat:41.9808, lng:2.8020, zone:"periferia"},
-  {id:"trueta", name:"Hospital Josep Trueta", cap:122, mode:"rot", op:"Tadifi", lat:41.9978, lng:2.8302, zone:"hospital"},
-  {id:"marva", name:"Pl. General Marvà", cap:39, mode:"abo", op:"Projectes i Disseny", lat:41.9846, lng:2.8205, zone:"centre"},
-  {id:"pou-rodo", name:"Pl. Pou Rodó", cap:40, mode:"abo", op:"Rubau Tarrés", lat:41.9858, lng:2.8248, zone:"centre"},
+  {id:"emili-grahit", name:"Emili Grahit", cap:326, mode:"rot", op:"TMG (municipal)", lat:41.97565, lng:2.81703, zone:"eixample"},
+  {id:"miquel-palol", name:"Pl. Miquel de Palol", cap:218, mode:"rot", op:"TMG (municipal)", lat:41.9819, lng:2.81443, zone:"eixample"},
+  {id:"pallol", name:"Pl. del Pallol", cap:40, mode:"abo", op:"TMG (municipal)", lat:41.98288, lng:2.82574, zone:"centre"},
+  {id:"calvet", name:"Pl. Calvet i Rubalcaba", cap:380, mode:"rot", op:"Parking Pl. Catalunya", lat:41.97984, lng:2.82261, zone:"centre"},
+  {id:"vista-alegre", name:"Parc de Vista Alegre", cap:90, mode:"rot", op:"Guimerà Nou", lat:41.97685, lng:2.82651, zone:"periferia"},
+  {id:"u-octubre", name:"Pl. U d'Octubre / Josep Pla", cap:407, mode:"rot", op:"Parking Pl. Constitució", lat:41.9835, lng:2.8208, zone:"eixample"},
+  {id:"pompeu-fabra", name:"Generalitat / Pl. Pompeu Fabra (Saba Santa Caterina)", cap:444, mode:"rot", op:"Saba", lat:41.98133, lng:2.82082, zone:"centre"},
+  {id:"berenguer", name:"Pl. Berenguer Carnisser", cap:427, mode:"rot", op:"Saba", lat:41.98866, lng:2.82289, zone:"periferia"},
+  {id:"santa-eugenia", name:"Pl. Santa Eugènia", cap:345, mode:"rot", op:"Empark / Telpark", lat:41.9763, lng:2.80306, zone:"periferia"},
+  {id:"trueta", name:"Hospital Josep Trueta", cap:122, mode:"rot", op:"Tadifi", lat:41.99843, lng:2.81838, zone:"hospital"},
+  {id:"marva", name:"Pl. General Marvà", cap:39, mode:"abo", op:"Projectes i Disseny", lat:41.98103, lng:2.8241, zone:"centre"},
+  {id:"pou-rodo", name:"Pl. Pou Rodó", cap:40, mode:"abo", op:"Rubau Tarrés", lat:41.98868, lng:2.825, zone:"centre"},
   {id:"saba-estacio", name:"Saba Estació Tren", cap:358, mode:"rot", op:"Saba", lat:41.97849, lng:2.81674, zone:"estacio"}
 ];
 
@@ -197,18 +197,18 @@ function stateOf(p){
 }
 
 // ---------- Mapa ----------
-const map=L.map("map",{zoomControl:true,attributionControl:true}).setView([41.9815,2.8185],14);
+const map=L.map("map",{zoomControl:true,attributionControl:true}).setView([41.9830,2.8195],14);
 let tilesOk=false;
 const tiles=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'}).addTo(map);
 tiles.on("tileload",()=>{tilesOk=true;});
 // Esquema mínimo por si el visor bloquea las teselas: río Onyar y Ter aproximados
-const onyar=[[41.9640,2.8075],[41.9700,2.8110],[41.9760,2.8150],[41.9800,2.8195],[41.9830,2.8222],[41.9860,2.8232],[41.9895,2.8232],[41.9925,2.8215]];
+const onyar=[[41.9650,2.8150],[41.9720,2.8195],[41.9780,2.8222],[41.9820,2.8233],[41.9860,2.8238],[41.9900,2.8236],[41.9935,2.8228]];
 const ter=[[41.9905,2.7900],[41.9925,2.8000],[41.9930,2.8100],[41.9928,2.8215],[41.9945,2.8320],[41.9990,2.8420]];
 const riverStyle=()=>({color:cssVar("--water"),weight:7,opacity:.9,lineCap:"round",interactive:false});
 const schematic=L.layerGroup([L.polyline(onyar,riverStyle()),L.polyline(ter,riverStyle()),
-  L.marker([41.9772,2.8148],{interactive:false,icon:L.divIcon({className:"river-lbl",html:"Riu Onyar",iconSize:[70,14]})}),
+  L.marker([41.9760,2.8180],{interactive:false,icon:L.divIcon({className:"river-lbl",html:"Riu Onyar",iconSize:[70,14]})}),
   L.marker([41.9942,2.8045],{interactive:false,icon:L.divIcon({className:"river-lbl",html:"Riu Ter",iconSize:[60,14]})}),
-  L.marker([41.9868,2.8262],{interactive:false,icon:L.divIcon({className:"river-lbl",html:"Barri Vell",iconSize:[70,14]})})]);
+  L.marker([41.9850,2.8268],{interactive:false,icon:L.divIcon({className:"river-lbl",html:"Barri Vell",iconSize:[70,14]})})]);
 setTimeout(()=>{if(!tilesOk){map.removeLayer(tiles);schematic.addTo(map);}},3500);
 
 const markers={};
