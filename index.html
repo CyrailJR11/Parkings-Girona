@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1d5bbf">
+<meta name="description" content="Plazas libres en los aparcamientos públicos de Girona: estimación por hora y avisos de los conductores en tiempo real.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<title>Aparca Girona</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap">
+</head>
+<body>
+<style>
+/* Layout: lista lateral + mapa a pantalla completa; en móvil, mapa arriba y lista debajo */
+:root{
+  --bg:#f3f5f8; --panel:#ffffff; --fg:#17202e; --muted:#5b6678; --line:#dde2ea;
+  --sign:#1d5bbf; --sign-fg:#ffffff;
+  --free:#1e9e5a; --few:#d98a0b; --full:#d13b3b; --sub:#8a94a6;
+  --water:#9cc3e6; --land:#e9edf2;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f141c; --panel:#161d28; --fg:#e7ecf3; --muted:#9aa6b8; --line:#273142;
+  --sign:#4b86e6; --sign-fg:#ffffff;
+  --free:#35c27a; --few:#f0a632; --full:#ef6060; --sub:#7d889b;
+  --water:#2c4a66; --land:#1b2330; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f141c; --panel:#161d28; --fg:#e7ecf3; --muted:#9aa6b8; --line:#273142;
+  --sign:#4b86e6; --sign-fg:#ffffff;
+  --free:#35c27a; --few:#f0a632; --full:#ef6060; --sub:#7d889b;
+  --water:#2c4a66; --land:#1b2330; color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--body);margin:0}
+.app{display:grid;grid-template-columns:380px 1fr;height:100%;min-height:0}
+aside{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;min-width:0}
+.head{padding-block:16px 12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:16px;border-bottom:1px solid var(--line);display:grid;gap:10px}
+.brand{display:flex;align-items:center;gap:10px}
+.psign{width:34px;height:34px;border-radius:6px;background:var(--sign);color:var(--sign-fg);font:700 24px/34px var(--display);text-align:center;flex:none}
+h1{font:600 26px/1 var(--display);margin:0;letter-spacing:.2px}
+.sub{color:var(--muted);font-size:13px;margin:0}
+.when{display:grid;gap:6px}
+.when label{font:600 12px/1 var(--body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.whenrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+select,button{font:inherit;color:inherit}
+select{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
+input[type=range]{flex:1;min-width:120px;accent-color:var(--sign)}
+.hourlbl{font:600 18px/1 var(--display);min-width:52px;font-variant-numeric:tabular-nums}
+.btn{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:6px 10px;cursor:pointer}
+.btn:hover{border-color:var(--sign)}
+.btn:focus-visible,select:focus-visible,input:focus-visible,.item:focus-visible{outline:2px solid var(--sign);outline-offset:2px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.list{overflow:auto;flex:1;min-height:0;padding-block:6px;margin:0;list-style:none;padding-left:0}
+.item{display:grid;grid-template-columns:54px 1fr auto;gap:10px;align-items:center;padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:16px;cursor:pointer;border-bottom:1px solid var(--line)}
+.item:hover,.item.sel{background:color-mix(in srgb,var(--sign) 8%,transparent)}
+.free-n{font:700 22px/1 var(--display);text-align:center;font-variant-numeric:tabular-nums;border-radius:6px;padding:7px 0;color:#fff}
+.free-n small{display:block;font:500 10px/1.1 var(--body);letter-spacing:.04em;text-transform:uppercase;opacity:.9}
+.item .name{font-weight:600;min-width:0}
+.item .meta{color:var(--muted);font-size:12.5px}
+.chip{font-size:11px;font-weight:600;border-radius:999px;padding:2px 8px;white-space:nowrap;border:1px solid currentColor}
+.foot{padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);display:grid;gap:4px}
+.foot a{color:var(--sign)}
+#map{height:100%;min-height:0;background:var(--land)}
+.leaflet-container{font:inherit;background:var(--land)}
+.pin{display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:8px;color:#fff;font:700 15px/1 var(--display);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);font-variant-numeric:tabular-nums}
+.pin.reported{box-shadow:0 0 0 3px var(--sign),0 2px 6px rgba(0,0,0,.35)}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--panel);color:var(--fg)}
+.leaflet-popup-content{margin:14px 16px;min-width:230px}
+.pp h3{font:600 20px/1.1 var(--display);margin:0 0 4px}
+.pp .row{display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:3px 0;border-bottom:1px dashed var(--line)}
+.pp .row b{font-variant-numeric:tabular-nums}
+.bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin:8px 0}
+.bar i{display:block;height:100%}
+.rep{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.rep button{flex:1;border:none;border-radius:6px;padding:7px 6px;color:#fff;font-weight:600;cursor:pointer;font-size:13px}
+.note{font-size:12px;color:var(--muted);margin-top:6px}
+.river-lbl{font:italic 600 12px/1 var(--body);color:var(--muted);white-space:nowrap;background:none;border:none}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:6px;font-size:13px;z-index:1000}
+@media (max-width:760px){
+  .app{grid-template-columns:1fr;grid-template-rows:52vh auto;height:auto}
+  #map{grid-row:1;height:52vh}
+  aside{grid-row:2;border-right:none}
+  .list{overflow:visible}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="app">
+  <aside>
+    <div class="head">
+      <div class="brand"><div class="psign" aria-hidden="true">P</div>
+        <div><h1>Aparca Girona</h1><p class="sub">Plazas libres estimadas en los aparcamientos públicos</p></div></div>
+      <div class="when">
+        <label for="day">¿Cuándo llegas?</label>
+        <div class="whenrow">
+          <select id="day" aria-label="Día">
+            <option value="1">Lunes</option><option value="2">Martes</option><option value="3">Miércoles</option>
+            <option value="4">Jueves</option><option value="5">Viernes</option><option value="6">Sábado</option><option value="0">Domingo</option>
+          </select>
+          <input id="hour" type="range" min="0" max="23.5" step="0.5" aria-label="Hora">
+          <span class="hourlbl" id="hourlbl">--:--</span>
+          <button class="btn" id="now" type="button">Ahora</button>
+          <button class="btn" id="locate" type="button">Cerca de mí</button>
+        </div>
+      </div>
+      <div class="legend">
+        <span><i class="dot" style="background:var(--free)"></i>Hay sitio</span>
+        <span><i class="dot" style="background:var(--few)"></i>Pocas plazas</span>
+        <span><i class="dot" style="background:var(--full)"></i>Casi lleno</span>
+        <span><i class="dot" style="background:var(--sub)"></i>Solo abonados</span>
+      </div>
+    </div>
+    <ul class="list" id="list"></ul>
+    <div class="foot">
+      <span id="mode">Las cifras son una estimación por hora y día. Los avisos de los conductores de los últimos 45 min tienen prioridad.</span>
+      <span>Capacidades: <a href="https://web.girona.cat/mobilitat/aparcaments-municipals" target="_blank" rel="noopener">Ajuntament de Girona</a> y Saba. Ubicaciones aproximadas.</span>
+    </div>
+  </aside>
+  <div id="map" role="application" aria-label="Mapa de aparcamientos de Girona"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+(function(){
+// ---------- Datos: capacidad oficial (web.girona.cat) + Saba ----------
+// zone: 'centre' (Barri Vell / Mercadal), 'eixample', 'periferia', 'hospital', 'estacio'
+const PARKINGS = [
+  {id:"emili-grahit", name:"Emili Grahit", cap:326, mode:"rot", op:"TMG (municipal)", lat:41.9768, lng:2.8113, zone:"eixample"},
+  {id:"miquel-palol", name:"Pl. Miquel de Palol", cap:218, mode:"rot", op:"TMG (municipal)", lat:41.9789, lng:2.8139, zone:"eixample"},
+  {id:"pallol", name:"Pl. del Pallol", cap:40, mode:"abo", op:"TMG (municipal)", lat:41.9873, lng:2.8247, zone:"centre"},
+  {id:"calvet", name:"Pl. Calvet i Rubalcaba", cap:380, mode:"rot", op:"Parking Pl. Catalunya", lat:41.9822, lng:2.8196, zone:"centre"},
+  {id:"vista-alegre", name:"Parc de Vista Alegre", cap:90, mode:"rot", op:"Guimerà Nou", lat:41.9800, lng:2.8270, zone:"periferia"},
+  {id:"u-octubre", name:"Pl. U d'Octubre / Josep Pla", cap:407, mode:"rot", op:"Parking Pl. Constitució", lat:41.9800, lng:2.8180, zone:"eixample"},
+  {id:"pompeu-fabra", name:"Generalitat / Pl. Pompeu Fabra (Saba Santa Caterina)", cap:444, mode:"rot", op:"Saba", lat:41.9814, lng:2.8207, zone:"centre"},
+  {id:"berenguer", name:"Pl. Berenguer Carnisser", cap:427, mode:"rot", op:"Saba", lat:41.9728, lng:2.8155, zone:"periferia"},
+  {id:"santa-eugenia", name:"Pl. Santa Eugènia", cap:345, mode:"rot", op:"Empark / Telpark", lat:41.9808, lng:2.8020, zone:"periferia"},
+  {id:"trueta", name:"Hospital Josep Trueta", cap:122, mode:"rot", op:"Tadifi", lat:41.9978, lng:2.8302, zone:"hospital"},
+  {id:"marva", name:"Pl. General Marvà", cap:39, mode:"abo", op:"Projectes i Disseny", lat:41.9846, lng:2.8205, zone:"centre"},
+  {id:"pou-rodo", name:"Pl. Pou Rodó", cap:40, mode:"abo", op:"Rubau Tarrés", lat:41.9858, lng:2.8248, zone:"centre"},
+  {id:"saba-estacio", name:"Saba Estació Tren", cap:358, mode:"rot", op:"Saba", lat:41.97849, lng:2.81674, zone:"estacio"}
+];
+
+// ---------- Modelo de ocupación estimada ----------
+// Curvas base (0..1) por hora para laborable, sábado y domingo, suavizadas.
+const WEEKDAY=[.18,.15,.13,.12,.12,.15,.25,.45,.68,.82,.88,.92,.93,.86,.74,.72,.80,.88,.92,.88,.74,.52,.36,.24];
+const SATURDAY=[.25,.20,.16,.14,.13,.13,.16,.24,.38,.58,.78,.90,.94,.88,.72,.66,.74,.86,.92,.90,.82,.70,.52,.36];
+const SUNDAY=[.24,.20,.16,.14,.13,.12,.13,.16,.22,.32,.44,.56,.62,.58,.46,.40,.42,.48,.52,.48,.40,.32,.26,.22];
+// Ajuste por zona: el centro se llena más; hospital lleno en horario de visitas; la estación, en horario laboral.
+const ZONE={
+  centre:   {w:1.05,s:1.08,d:1.10},
+  eixample: {w:1.00,s:0.92,d:0.85},
+  periferia:{w:0.88,s:0.80,d:0.75},
+  hospital: {w:1.08,s:0.90,d:0.90},
+  estacio:  {w:1.02,s:0.80,d:0.78}
+};
+function curve(arr,h){const a=Math.floor(h)%24,b=(a+1)%24,t=h-Math.floor(h);return arr[a]*(1-t)+arr[b]*t;}
+// Variación estable por parking para que no todos tengan la misma cifra
+function jitter(id){let x=0;for(const c of id)x=(x*31+c.charCodeAt(0))>>>0;return ((x%1000)/1000-.5)*0.08;}
+function estimate(p,day,h){
+  const arr=day===0?SUNDAY:day===6?SATURDAY:WEEKDAY;
+  const z=ZONE[p.zone]; const k=day===0?z.d:day===6?z.s:z.w;
+  const occ=Math.max(.03,Math.min(.99,curve(arr,h)*k+jitter(p.id)));
+  return {occ, free:Math.round(p.cap*(1-occ))};
+}
+function level(occ){return occ<.75?"free":occ<.92?"few":"full";}
+const LBL={free:"Hay sitio",few:"Pocas plazas",full:"Casi lleno",sub:"Solo abonados"};
+const REPORT_OCC={free:.55,few:.88,full:.99};
+
+// ---------- Estado ----------
+const els={day:document.getElementById("day"),hour:document.getElementById("hour"),hourlbl:document.getElementById("hourlbl"),list:document.getElementById("list"),now:document.getElementById("now"),mode:document.getElementById("mode")};
+let reports={}; // parkingId -> [{status, ts, by}]
+let selected=null, isNow=true, myId="local", myPos=null;
+const REPORT_TTL=45*60*1000;
+
+function setNow(){const d=new Date();els.day.value=String(d.getDay());els.hour.value=String(Math.round((d.getHours()+d.getMinutes()/60)*2)/2);isNow=true;}
+function fmtHour(h){const hh=Math.floor(h),mm=Math.round((h-hh)*60);return String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0");}
+function cssVar(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+function colorFor(l){return cssVar("--"+l);}
+function ago(ts){const m=Math.round((Date.now()-ts)/60000);return m<1?"hace un momento":"hace "+m+" min";}
+
+function latestReport(id){
+  const arr=(reports[id]||[]).filter(r=>Date.now()-r.ts<REPORT_TTL).sort((a,b)=>b.ts-a.ts);
+  return arr[0]||null;
+}
+function stateOf(p){
+  if(p.mode==="abo") return {lvl:"sub",free:null,occ:null,src:"abo"};
+  const day=+els.day.value,h=+els.hour.value; const e=estimate(p,day,h);
+  const r=isNow?latestReport(p.id):null;
+  if(r){const occ=REPORT_OCC[r.status];return {lvl:r.status,free:Math.round(p.cap*(1-occ)),occ,src:"report",report:r};}
+  return {lvl:level(e.occ),free:e.free,occ:e.occ,src:"est"};
+}
+
+// ---------- Mapa ----------
+const map=L.map("map",{zoomControl:true,attributionControl:true}).setView([41.9815,2.8185],14);
+let tilesOk=false;
+const tiles=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'}).addTo(map);
+tiles.on("tileload",()=>{tilesOk=true;});
+// Esquema mínimo por si el visor bloquea las teselas: río Onyar y Ter aproximados
+const onyar=[[41.9640,2.8075],[41.9700,2.8110],[41.9760,2.8150],[41.9800,2.8195],[41.9830,2.8222],[41.9860,2.8232],[41.9895,2.8232],[41.9925,2.8215]];
+const ter=[[41.9905,2.7900],[41.9925,2.8000],[41.9930,2.8100],[41.9928,2.8215],[41.9945,2.8320],[41.9990,2.8420]];
+const riverStyle=()=>({color:cssVar("--water"),weight:7,opacity:.9,lineCap:"round",interactive:false});
+const schematic=L.layerGroup([L.polyline(onyar,riverStyle()),L.polyline(ter,riverStyle()),
+  L.marker([41.9772,2.8148],{interactive:false,icon:L.divIcon({className:"river-lbl",html:"Riu Onyar",iconSize:[70,14]})}),
+  L.marker([41.9942,2.8045],{interactive:false,icon:L.divIcon({className:"river-lbl",html:"Riu Ter",iconSize:[60,14]})}),
+  L.marker([41.9868,2.8262],{interactive:false,icon:L.divIcon({className:"river-lbl",html:"Barri Vell",iconSize:[70,14]})})]);
+setTimeout(()=>{if(!tilesOk){map.removeLayer(tiles);schematic.addTo(map);}},3500);
+
+const markers={};
+function pinIcon(p,s){
+  const txt=s.lvl==="sub"?"A":s.free;
+  return L.divIcon({className:"",iconSize:[38,38],iconAnchor:[19,19],
+    html:`<div class="pin${s.src==="report"?" reported":""}" style="background:${colorFor(s.lvl)}">${txt}</div>`});
+}
+function popupHtml(p,s){
+  const occPct=s.occ==null?null:Math.round(s.occ*100);
+  let body=`<div class="pp"><h3>${p.name}</h3>`;
+  body+=`<div class="row"><span>Capacidad</span><b>${p.cap} plazas</b></div>`;
+  body+=`<div class="row"><span>Gestión</span><b>${p.op}</b></div>`;
+  if(s.lvl==="sub"){body+=`<p class="note">Aparcamiento solo para abonados: no admite rotación.</p></div>`;return body;}
+  body+=`<div class="row"><span>Libres ${s.src==="report"?"(según aviso)":"(estimado)"}</span><b>≈ ${s.free}</b></div>`;
+  body+=`<div class="bar"><i style="width:${occPct}%;background:${colorFor(s.lvl)}"></i></div>`;
+  body+=`<div class="row"><span>Ocupación</span><b>${occPct}% · ${LBL[s.lvl]}</b></div>`;
+  if(s.src==="report") body+=`<p class="note">Último aviso de un conductor ${ago(s.report.ts)}.</p>`;
+  if(isNow){
+    body+=`<div class="rep" data-id="${p.id}">
+      <button type="button" data-s="free" style="background:${colorFor("free")}">Hay sitio</button>
+      <button type="button" data-s="few" style="background:${colorFor("few")}">Pocas</button>
+      <button type="button" data-s="full" style="background:${colorFor("full")}">Lleno</button></div>
+      <p class="note">¿Estás aquí? Avisa a los demás.</p>`;
+  } else body+=`<p class="note">Previsión para ${els.day.options[els.day.selectedIndex].text.toLowerCase()} a las ${fmtHour(+els.hour.value)}.</p>`;
+  return body+"</div>";
+}
+
+function render(){
+  els.hourlbl.textContent=fmtHour(+els.hour.value);
+  const rows=PARKINGS.map(p=>({p,s:stateOf(p)}));
+  const dist=p=>myPos?map.distance(myPos,[p.lat,p.lng]):0;
+  rows.sort((a,b)=>{if(a.s.lvl==="sub"&&b.s.lvl!=="sub")return 1;if(b.s.lvl==="sub"&&a.s.lvl!=="sub")return -1;
+    if(myPos){const fa=a.s.lvl==="full",fb=b.s.lvl==="full";if(fa!==fb)return fa?1:-1;return dist(a.p)-dist(b.p);}
+    return (b.s.free||0)-(a.s.free||0);});
+  els.list.innerHTML="";
+  for(const {p,s} of rows){
+    const li=document.createElement("li");li.className="item"+(selected===p.id?" sel":"");li.tabIndex=0;li.dataset.id=p.id;
+    const n=s.lvl==="sub"?"—":s.free;
+    li.innerHTML=`<div class="free-n" style="background:${colorFor(s.lvl)}">${n}<small>${s.lvl==="sub"?"abon.":"libres"}</small></div>
+      <div style="min-width:0"><div class="name"></div><div class="meta">${myPos?(dist(p)<1000?Math.round(dist(p)/10)*10+" m · ":(dist(p)/1000).toFixed(1)+" km · "):""}${p.cap} plazas · ${p.op}${s.src==="report"?" · aviso "+ago(s.report.ts):""}</div></div>
+      <span class="chip" style="color:${colorFor(s.lvl)}">${LBL[s.lvl]}</span>`;
+    li.querySelector(".name").textContent=p.name;
+    li.addEventListener("click",()=>focusParking(p.id));
+    li.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();focusParking(p.id);}});
+    els.list.appendChild(li);
+    if(!markers[p.id]){markers[p.id]=L.marker([p.lat,p.lng]).addTo(map);markers[p.id].on("click",()=>{selected=p.id;markRows();});}
+    markers[p.id].setIcon(pinIcon(p,s));
+    markers[p.id].bindPopup(popupHtml(p,s));
+  }
+}
+function markRows(){for(const li of els.list.children)li.classList.toggle("sel",li.dataset.id===selected);}
+function focusParking(id){selected=id;const p=PARKINGS.find(x=>x.id===id);map.setView([p.lat,p.lng],16);markers[id].openPopup();markRows();}
+
+map.on("popupopen",e=>{
+  const box=e.popup.getElement().querySelector(".rep");if(!box)return;
+  box.addEventListener("click",ev=>{const b=ev.target.closest("button");if(!b)return;sendReport(box.dataset.id,b.dataset.s);});
+});
+
+function toast(msg){const t=document.createElement("div");t.className="toast";t.setAttribute("role","status");t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2600);}
+
+// ---------- Avisos en tiempo real (Supabase, plan gratuito) ----------
+const SUPABASE_URL="https://wclytpnajprfqgvcnttl.supabase.co";
+const SUPABASE_KEY="sb_publishable_s4vXjVuOfY0r7pva-mfRuQ_EFQZIL92"; // clave pública: solo permite leer y añadir avisos
+const REST=SUPABASE_URL+"/rest/v1/parking_reports";
+const HDR={apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY};
+try{myId=localStorage.getItem("ag-device")||("d"+Math.random().toString(36).slice(2,12));localStorage.setItem("ag-device",myId);}catch(e){myId="d"+Math.random().toString(36).slice(2,12);}
+const lastSent={};
+
+function addReport(row){
+  const ts=Date.parse(row.created_at)||Date.now();
+  const arr=(reports[row.parking_id]=reports[row.parking_id]||[]);
+  if(row.id&&arr.some(r=>r.id===row.id))return;
+  arr.push({id:row.id,status:row.status,ts});
+}
+async function loadReports(){
+  const since=new Date(Date.now()-REPORT_TTL).toISOString();
+  try{
+    const r=await fetch(REST+"?select=id,parking_id,status,created_at&created_at=gt."+encodeURIComponent(since)+"&order=created_at.desc&limit=500",{headers:HDR,cache:"no-store"});
+    if(!r.ok)throw new Error(r.status);
+    const rows=await r.json(); reports={}; rows.forEach(addReport); render(); setLive(true);
+  }catch(e){setLive(false);}
+}
+async function sendReport(id,status){
+  if(lastSent[id]&&Date.now()-lastSent[id]<120000){toast("Ya has avisado de este parking hace poco.");map.closePopup();return;}
+  try{
+    const r=await fetch(REST,{method:"POST",headers:{...HDR,"Content-Type":"application/json",Prefer:"return=representation"},body:JSON.stringify({parking_id:id,status,device:myId})});
+    if(!r.ok)throw new Error(r.status);
+    const rows=await r.json(); rows.forEach(addReport); lastSent[id]=Date.now(); render(); toast("Aviso enviado. Gracias.");
+  }catch(e){toast("No se pudo enviar el aviso. Revisa la conexión e inténtalo otra vez.");}
+  map.closePopup();
+}
+let liveTimer=null;
+function setLive(ok){els.mode.textContent=ok?"Plazas estimadas por hora y día. Los avisos de los conductores (últimos 45 min) se actualizan al instante.":"Sin conexión: se muestra solo la estimación por hora.";}
+function connectRealtime(){
+  // Al instante con Supabase Realtime; si falla, se consulta cada 20 s.
+  liveTimer=setInterval(loadReports,20000);
+  if(!window.supabase)return;
+  try{
+    const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+    sb.channel("reports").on("postgres_changes",{event:"INSERT",schema:"public",table:"parking_reports"},p=>{addReport(p.new);render();})
+      .subscribe(st=>{if(st==="SUBSCRIBED"){clearInterval(liveTimer);liveTimer=setInterval(loadReports,120000);}});
+  }catch(e){}
+}
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){if(isNow)setNow();loadReports();}});
+
+// ---------- Cerca de mí ----------
+let meMarker=null;
+document.getElementById("locate").addEventListener("click",()=>{
+  if(!navigator.geolocation){toast("Tu navegador no permite la ubicación.");return;}
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const ll=[pos.coords.latitude,pos.coords.longitude];
+    myPos=ll;
+    if(!meMarker)meMarker=L.circleMarker(ll,{radius:8,color:"#fff",weight:3,fillColor:cssVar("--sign"),fillOpacity:1}).addTo(map); else meMarker.setLatLng(ll);
+    map.setView(ll,15); render();
+  },()=>toast("No se pudo obtener tu ubicación."),{enableHighAccuracy:true,timeout:10000});
+});
+
+// ---------- Arranque ----------
+setNow();
+els.day.addEventListener("change",()=>{isNow=false;render();});
+els.hour.addEventListener("input",()=>{isNow=false;render();});
+els.now.addEventListener("click",()=>{setNow();render();});
+render();
+setInterval(()=>{if(isNow){setNow();render();}},60000);
+loadReports();
+connectRealtime();
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+})();
+</script>
+</body>
+</html>
