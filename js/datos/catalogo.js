@@ -6,7 +6,7 @@ const AJ = "https://web.girona.cat/mobilitat/aparcaments-municipals";
 const SABA = "https://www.saba.es/ca/parking-girona/";
 const TMG_HORARIO = "24 h (atención L–V 6:30–21:30)";
 
-export const PARKINGS = [
+export const PARKINGS = Object.freeze([
   new ParkingRotacion({ id: "emili-grahit", nombre: "Emili Grahit", plazas: 326, operador: "TMG", direccion: "C. d'Emili Grahit, 4", horario: TMG_HORARIO, telefono: "972 486 682", urlTarifas: TMG + "eg", lat: 41.97565, lng: 2.81703, zona: "eixample" }),
   new ParkingRotacion({ id: "miquel-palol", nombre: "Pl. Miquel de Palol", plazas: 218, operador: "TMG", direccion: "Pl. de Miquel de Palol, 72", horario: TMG_HORARIO, telefono: "972 223 382", urlTarifas: TMG + "mp", lat: 41.9819, lng: 2.81443, zona: "eixample" }),
   new ParkingAbonados({ id: "pallol", nombre: "Pl. del Pallol", plazas: 40, operador: "TMG", direccion: "Pl. del Pallol", urlTarifas: AJ, lat: 41.98288, lng: 2.82574, zona: "centre" }),
@@ -20,9 +20,9 @@ export const PARKINGS = [
   new ParkingAbonados({ id: "marva", nombre: "Pl. General Marvà", plazas: 39, operador: "Projectes i Disseny", direccion: "Pl. del General Marvà", urlTarifas: AJ, lat: 41.98103, lng: 2.8241, zona: "centre" }),
   new ParkingAbonados({ id: "pou-rodo", nombre: "Pl. Pou Rodó", plazas: 40, operador: "Rubau Tarrés", direccion: "C. del Pou Rodó", urlTarifas: AJ, lat: 41.98868, lng: 2.825, zona: "centre" }),
   new ParkingRotacion({ id: "saba-estacio", nombre: "Saba Estació Tren", plazas: 358, operador: "SABA", direccion: "C. de Pierre Vilar, 2", urlTarifas: SABA + "parking-saba-estacio-tren-girona", enVivo: true, lat: 41.97849, lng: 2.81674, zona: "estacio" }),
-];
+]);
 
-export const ZONAS = [
+export const ZONAS = Object.freeze([
   new ZonaAzul({
     id: "zona-azul", nombre: "Zona azul",
     horarios: [
@@ -44,4 +44,4 @@ export const ZONAS = [
       "Riu Güell (entre rotondas del Rellotge y la Devesa): 2 h gratis martes y sábados de mercado, 8–14 h.",
     ],
   }),
-];
+]);

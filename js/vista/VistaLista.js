@@ -1,7 +1,7 @@
 // Lista de parkings bajo el mapa.
 export class VistaLista {
-  #ul;
-  constructor(ul, alSeleccionar) { this.#ul = ul; this.alSeleccionar = alSeleccionar; }
+  #ul; #alSeleccionar;
+  constructor(ul, alSeleccionar) { this.#ul = ul; this.#alSeleccionar = alSeleccionar; }
 
   /** filas: [{parking, disp, distancia}] ya ordenadas */
   pintar(filas, seleccionado) {
@@ -16,8 +16,8 @@ export class VistaLista {
         <div class="meta">${d}${disp.plazasLibres()?.total ?? parking.plazas} plazas · </div></div>`;
       li.querySelector(".name").textContent = parking.nombre;
       li.querySelector(".meta").append(parking.operador);
-      li.addEventListener("click", () => this.alSeleccionar(parking.id, true));
-      li.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); this.alSeleccionar(parking.id, true); } });
+      li.addEventListener("click", () => this.#alSeleccionar(parking.id, true));
+      li.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); this.#alSeleccionar(parking.id, true); } });
       this.#ul.appendChild(li);
     }
   }

@@ -9,21 +9,43 @@
 import { SoloAbonados } from "./Disponibilidad.js";
 import { esc } from "../util.js";
 
+// Encapsulamiento: los datos son campos privados (#) y solo se leen con getters.
+// Nadie de fuera puede cambiar las plazas o la posición de un parking por error.
 export class Aparcamiento {
+  #id; #nombre;
   constructor({ id, nombre }) {
     if (new.target === Aparcamiento) throw new TypeError("Aparcamiento es abstracta");
-    this.id = id; this.nombre = nombre;
+    if (!id || !nombre) throw new TypeError("Falta id o nombre");
+    this.#id = id; this.#nombre = nombre;
   }
+  get id() { return this.#id; }
+  get nombre() { return this.#nombre; }
   /** Cada subclase decide cómo se describe su precio. */
   tarifaHtml() { throw new Error("tarifaHtml() no implementado"); }
 }
 
 export class ParkingCerrado extends Aparcamiento {
+  #plazas; #operador; #direccion; #horario; #telefono; #urlTarifas; #lat; #lng; #zona; #enVivo;
   constructor({ id, nombre, plazas, operador, direccion, horario = null, telefono = null, urlTarifas, lat, lng, zona, enVivo = false }) {
     super({ id, nombre });
     if (new.target === ParkingCerrado) throw new TypeError("ParkingCerrado es abstracta");
-    Object.assign(this, { plazas, operador, direccion, horario, telefono, urlTarifas, lat, lng, zona, enVivo });
+    if (!Number.isInteger(plazas) || plazas <= 0) throw new RangeError(`Plazas no válidas en ${id}`);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new RangeError(`Coordenadas no válidas en ${id}`);
+    this.#plazas = plazas; this.#operador = operador; this.#direccion = direccion; this.#horario = horario;
+    this.#telefono = telefono; this.#urlTarifas = urlTarifas; this.#lat = lat; this.#lng = lng;
+    this.#zona = zona; this.#enVivo = Boolean(enVivo);
   }
+  get plazas() { return this.#plazas; }
+  get operador() { return this.#operador; }
+  get direccion() { return this.#direccion; }
+  get horario() { return this.#horario; }
+  get telefono() { return this.#telefono; }
+  get urlTarifas() { return this.#urlTarifas; }
+  get lat() { return this.#lat; }
+  get lng() { return this.#lng; }
+  get zona() { return this.#zona; }
+  /** ¿El operador publica plazas libres en directo? */
+  get enVivo() { return this.#enVivo; }
   /** Polimorfismo: cada tipo de parking resuelve su disponibilidad a su manera. */
   disponibilidad(_servicio, _contexto) { throw new Error("disponibilidad() no implementado"); }
   tarifaHtml() { return `<a href="${this.urlTarifas}" target="_blank" rel="noopener">Tarifas oficiales</a>`; }
@@ -59,11 +81,18 @@ export class ParkingAbonados extends ParkingCerrado {
 }
 
 export class ZonaCalle extends Aparcamiento {
+  #horarios; #tarifas; #notas;
   constructor({ id, nombre, horarios, tarifas, notas = [] }) {
     super({ id, nombre });
     if (new.target === ZonaCalle) throw new TypeError("ZonaCalle es abstracta");
-    Object.assign(this, { horarios, tarifas, notas });
+    // Copias congeladas: quien las lea no puede modificar la zona.
+    this.#horarios = Object.freeze(horarios.map((h) => Object.freeze({ ...h })));
+    this.#tarifas = Object.freeze([...tarifas]);
+    this.#notas = Object.freeze([...notas]);
   }
+  get horarios() { return this.#horarios; }
+  get tarifas() { return this.#tarifas; }
+  get notas() { return this.#notas; }
   /** Cada zona tiene su color en la tarjeta. */
   get colorVariable() { throw new Error("colorVariable no implementado"); }
   tarifaHtml() { return this.tarifas.length > 1 ? `<ul>${this.tarifas.map((t) => `<li>${t}</li>`).join("")}</ul>` : `<p><b>Tarifa:</b> ${this.tarifas[0]}</p>`; }

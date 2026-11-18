@@ -7,12 +7,21 @@ export const PISTA = { free: "suele haber sitio", few: "suele haber pocas plazas
 
 /** Clase abstracta: no se puede instanciar directamente. */
 export class Disponibilidad {
+  // Encapsulamiento: estado privado e inmutable; solo se lee con getters.
+  #nivel; #actualizado; #pista;
   constructor({ nivel = null, actualizado = null, pista = null } = {}) {
     if (new.target === Disponibilidad) throw new TypeError("Disponibilidad es abstracta");
-    this.nivel = nivel;            // "free" | "few" | "full" | null
-    this.actualizado = actualizado; // marca de tiempo (ms) o null
-    this.pista = pista;            // previsión orientativa para mostrar como ayuda
+    if (nivel !== null && !(nivel in ETIQUETA)) throw new RangeError("Nivel no válido: " + nivel);
+    this.#nivel = nivel;
+    this.#actualizado = actualizado;
+    this.#pista = pista;
   }
+  /** "free" | "few" | "full" | null */
+  get nivel() { return this.#nivel; }
+  /** Marca de tiempo (ms) del dato, o null. */
+  get actualizado() { return this.#actualizado; }
+  /** Previsión orientativa que se enseña como ayuda, o null. */
+  get pista() { return this.#pista; }
   /** Orden en la lista: menor = más arriba. */
   get orden() { return 2; }
   /** Color de fondo del marcador y la insignia. */
@@ -44,10 +53,14 @@ export class Disponibilidad {
 
 /** Dato real publicado por el operador. */
 export class DisponibilidadReal extends Disponibilidad {
+  #libres; #total; #fuente;
   constructor({ libres, total, actualizado, fuente }) {
     super({ nivel: DisponibilidadReal.nivelPara(libres, total), actualizado });
-    this.libres = libres; this.total = total; this.fuente = fuente;
+    this.#libres = libres; this.#total = total; this.#fuente = fuente;
   }
+  get libres() { return this.#libres; }
+  get total() { return this.#total; }
+  get fuente() { return this.#fuente; }
   static nivelPara(libres, total) {
     if (libres <= 0) return "full";
     return libres / Math.max(1, total) > 0.15 && libres > 20 ? "free" : "few";

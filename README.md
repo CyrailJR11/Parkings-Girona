@@ -54,6 +54,8 @@ FuenteDisponibilidad (abstracta)  — ServicioDisponibilidad las prueba en orden
 - `js/vista/`: `VistaMapa`, `VistaLista`, `VistaZonas`.
 - `js/App.js`: el controlador que lo une todo; `js/main.js` lo arranca.
 
+**Encapsulamiento:** los datos de cada objeto son campos privados (`#plazas`, `#nivel`…) que solo se leen con getters; los constructores validan (plazas > 0, coordenadas, nivel) y el catálogo y las listas de tarifas están congelados. Así nada de fuera puede cambiar un parking por error.
+
 La interfaz nunca pregunta "¿de qué tipo eres?": cada objeto sabe pintarse (`insigniaHtml()`, `estadoHtml()`, `tarjetaHtml()`…).
 
 En Supabase, la función `saba-live` sigue la misma idea: `FuenteOperador` (abstracta) con el método `consultar()` común y la subclase `SabaWeb`. Para otro operador basta con añadir otra subclase.

@@ -2,14 +2,14 @@
 import { cssVar } from "../util.js";
 
 export class VistaMapa {
-  #mapa; #marcadores = new Map(); #yo = null;
+  #mapa; #marcadores = new Map(); #yo = null; #alSeleccionar;
   constructor(idContenedor, { alSeleccionar, alAvisar }) {
     this.#mapa = L.map(idContenedor).setView([41.983, 2.8195], 14);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
     }).addTo(this.#mapa);
-    this.alSeleccionar = alSeleccionar;
+    this.#alSeleccionar = alSeleccionar;
     // Un solo oyente para los botones de aviso: la ficha se redibuja y perdería los suyos.
     document.getElementById(idContenedor).addEventListener("click", (ev) => {
       const b = ev.target.closest(".rep button");
@@ -24,7 +24,7 @@ export class VistaMapa {
     let m = this.#marcadores.get(parking.id);
     if (!m) {
       m = L.marker([parking.lat, parking.lng], { icon: icono }).addTo(this.#mapa);
-      m.on("click", () => this.alSeleccionar(parking.id, false));
+      m.on("click", () => this.#alSeleccionar(parking.id, false));
       this.#marcadores.set(parking.id, m);
     } else m.setIcon(icono);
     const pop = m.getPopup();
