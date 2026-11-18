@@ -1,41 +1,69 @@
-// Lee las plazas disponibles que Saba publica en la ficha de cada parking de Girona
-// y las guarda en public.parking_live. Lo lanza pg_cron cada pocos minutos.
+// Lee las plazas disponibles que publican los operadores de parkings de Girona
+// y las guarda en public.parking_live. Lo lanza pg_cron cada 3 minutos.
+//
+//   FuenteOperador (abstracta): método plantilla consultar() → fila para parking_live
+//   └── SabaWeb: lee la ficha pública de cada parking en saba.es
+// Para añadir otro operador basta con una subclase nueva que implemente leer().
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const SOURCES = [
-  { id: "saba-estacio", url: "https://www.saba.es/ca/parking-girona/parking-saba-estacio-tren-girona" },
-  { id: "berenguer", url: "https://www.saba.es/ca/parking-girona/parking-saba-berenguer-i-carnicer" },
-  { id: "pompeu-fabra", url: "https://www.saba.es/ca/parking-girona/parking-saba-santa-caterina" },
-];
+type Lectura = { total: number | null; free: number | null };
+type Fila = {
+  parking_id: string; source: string; source_url: string; ok: boolean; error: string | null;
+  total: number | null; free: number | null; fetched_at: string;
+};
 
-function parse(html: string) {
-  const block = html.match(/class="available-places"[^>]*>([\s\S]{0,400}?)<\/div>/i);
-  if (!block) return null;
-  const nums = [...block[1].matchAll(/<strong>\s*(\d+)\s*<\/strong>/gi)].map((m) => parseInt(m[1], 10));
-  if (nums.length === 0) return null;
-  return { total: nums[0] ?? null, free: nums.length > 1 ? nums[1] : null };
+abstract class FuenteOperador {
+  constructor(readonly parkingId: string, readonly url: string) {}
+  /** Nombre corto que se guarda en la columna source. */
+  abstract get origen(): string;
+  /** Cada operador sabe cómo leer sus plazas. */
+  protected abstract leer(): Promise<Lectura | null>;
+
+  /** Igual para todos: nunca lanza error; si no hay dato, ok = false y free = null. */
+  async consultar(ahora: string): Promise<Fila> {
+    const base = { parking_id: this.parkingId, source: this.origen, source_url: this.url, fetched_at: ahora };
+    try {
+      const l = await this.leer();
+      if (!l || l.free == null) return { ...base, ok: false, error: "sin dato de plazas", total: l?.total ?? null, free: null };
+      return { ...base, ok: true, error: null, total: l.total, free: l.free };
+    } catch (e) {
+      return { ...base, ok: false, error: String(e).slice(0, 200), total: null, free: null };
+    }
+  }
 }
+
+class SabaWeb extends FuenteOperador {
+  get origen() { return "saba-web"; }
+  protected async leer(): Promise<Lectura | null> {
+    const r = await fetch(this.url, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; AparcaGirona/1.0)", "Accept-Language": "ca,es;q=0.8" },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return SabaWeb.analizar(await r.text());
+  }
+  /** La ficha muestra <strong>total</strong> … <strong>libres</strong> dentro de .available-places */
+  static analizar(html: string): Lectura | null {
+    const bloque = html.match(/class="available-places"[^>]*>([\s\S]{0,400}?)<\/div>/i);
+    if (!bloque) return null;
+    const nums = [...bloque[1].matchAll(/<strong>\s*(\d+)\s*<\/strong>/gi)].map((m) => parseInt(m[1], 10));
+    if (nums.length === 0) return null;
+    return { total: nums[0] ?? null, free: nums.length > 1 ? nums[1] : null };
+  }
+}
+
+const SABA = "https://www.saba.es/ca/parking-girona/";
+const FUENTES: FuenteOperador[] = [
+  new SabaWeb("saba-estacio", SABA + "parking-saba-estacio-tren-girona"),
+  new SabaWeb("berenguer", SABA + "parking-saba-berenguer-i-carnicer"),
+  new SabaWeb("pompeu-fabra", SABA + "parking-saba-santa-caterina"),
+];
 
 Deno.serve(async () => {
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-  const now = new Date().toISOString();
-  const rows = await Promise.all(SOURCES.map(async (s) => {
-    try {
-      const r = await fetch(s.url, {
-        headers: { "User-Agent": "Mozilla/5.0 (compatible; AparcaGirona/1.0)", "Accept-Language": "ca,es;q=0.8" },
-        signal: AbortSignal.timeout(15000),
-      });
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      const p = parse(await r.text());
-      if (!p || p.free == null) {
-        return { parking_id: s.id, source: "saba-web", source_url: s.url, ok: false, error: "sin dato de plazas", total: p?.total ?? null, free: null, fetched_at: now };
-      }
-      return { parking_id: s.id, source: "saba-web", source_url: s.url, ok: true, error: null, total: p.total, free: p.free, fetched_at: now };
-    } catch (e) {
-      return { parking_id: s.id, source: "saba-web", source_url: s.url, ok: false, error: String(e).slice(0, 200), total: null, free: null, fetched_at: now };
-    }
-  }));
-  const { error } = await sb.from("parking_live").upsert(rows);
-  return new Response(JSON.stringify({ rows, error: error?.message ?? null }), { headers: { "Content-Type": "application/json" } });
+  const ahora = new Date().toISOString();
+  const filas = await Promise.all(FUENTES.map((f) => f.consultar(ahora))); // polimorfismo
+  const { error } = await sb.from("parking_live").upsert(filas);
+  return new Response(JSON.stringify({ rows: filas, error: error?.message ?? null }), { headers: { "Content-Type": "application/json" } });
 });

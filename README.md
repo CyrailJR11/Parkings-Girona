@@ -27,3 +27,33 @@ Settings → Pages → Source: «Deploy from a branch», rama `main`, carpeta `/
 - Leer las plazas que Saba publica en su web con una GitHub Action programada (mínimo cada 5 min) y mostrarlas como dato real.
 - Ajustar la estimación con los avisos acumulados.
 - Pedir al Ajuntament de Girona o a TMG los datos de ocupación de sus aparcamientos.
+
+## Estructura del código (POO)
+
+La web usa módulos de JavaScript (`js/`), sin paso de compilación, así GitHub Pages la sirve tal cual.
+
+```
+Aparcamiento (abstracta)                     Disponibilidad (abstracta)
+├── ParkingCerrado (abstracta)               ├── DisponibilidadReal      dato del operador (Saba)
+│   ├── ParkingRotacion  → pide a las fuentes├── DisponibilidadAviso     aviso de un conductor
+│   └── ParkingAbonados  → "solo abonados"   ├── DisponibilidadPrevision pista para otra hora
+└── ZonaCalle (abstracta)                    ├── DisponibilidadDesconocida
+    ├── ZonaAzul                             └── SoloAbonados
+    └── ZonaVerde
+
+FuenteDisponibilidad (abstracta)  — ServicioDisponibilidad las prueba en orden
+├── FuenteOperadorEnVivo  (Saba, vía Supabase)
+├── FuenteAvisos          (conductores, últimos 45 min)
+├── FuentePrevision       (solo si eliges otra hora)
+└── FuenteDesconocida     (siempre responde: nunca se inventa un número)
+```
+
+- `js/modelo/`: clases de dominio y `ModeloPrevision`.
+- `js/fuentes/`: de dónde sale la disponibilidad.
+- `js/datos/`: `catalogo.js` (los parkings y las zonas) y `RepositorioSupabase` (lectura, avisos y tiempo real).
+- `js/vista/`: `VistaMapa`, `VistaLista`, `VistaZonas`.
+- `js/App.js`: el controlador que lo une todo; `js/main.js` lo arranca.
+
+La interfaz nunca pregunta "¿de qué tipo eres?": cada objeto sabe pintarse (`insigniaHtml()`, `estadoHtml()`, `tarjetaHtml()`…).
+
+En Supabase, la función `saba-live` sigue la misma idea: `FuenteOperador` (abstracta) con el método `consultar()` común y la subclase `SabaWeb`. Para otro operador basta con añadir otra subclase.

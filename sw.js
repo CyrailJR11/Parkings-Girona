@@ -1,6 +1,9 @@
 // Guarda la app para que abra al instante y funcione sin conexión (solo con la estimación).
-const CACHE = "aparca-girona-v3";
-const SHELL = ["./", "index.html", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png"];
+const CACHE = "aparca-girona-v4";
+const SHELL = ["./", "index.html", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png",
+  "js/main.js", "js/App.js", "js/util.js", "js/modelo/Disponibilidad.js", "js/modelo/ModeloPrevision.js", "js/modelo/Aparcamiento.js",
+  "js/fuentes/FuenteDisponibilidad.js", "js/datos/catalogo.js", "js/datos/RepositorioSupabase.js",
+  "js/vista/VistaMapa.js", "js/vista/VistaLista.js", "js/vista/VistaZonas.js"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))); self.clients.claim(); });
 self.addEventListener("fetch", e => {
