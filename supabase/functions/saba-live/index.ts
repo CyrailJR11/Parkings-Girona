@@ -63,7 +63,9 @@ const FUENTES: FuenteOperador[] = [
 
 /** Guarda desde cuándo se repite el mismo número: así la web detecta datos congelados. */
 function marcarDesde(fila: Fila, previa: Previa | undefined, ahora: string): Fila {
-  if (fila.free == null) return { ...fila, free_since: previa?.free_since ?? null };
+  // Si esta lectura falla, se conserva el último número (con ok = false, la web no lo usa)
+  // para que un fallo suelto no reinicie la cuenta de «sin cambios».
+  if (fila.free == null) return { ...fila, free: previa?.free ?? null, free_since: previa?.free_since ?? null };
   const igual = previa && previa.free === fila.free && previa.free_since;
   return { ...fila, free_since: igual ? previa!.free_since : ahora };
 }
