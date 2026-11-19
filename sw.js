@@ -1,5 +1,5 @@
 // Guarda la app para que abra al instante y funcione sin conexión (solo con la estimación).
-const CACHE = "aparca-girona-v6";
+const CACHE = "aparca-girona-v7";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png",
   "js/main.js", "js/App.js", "js/util.js", "js/modelo/Disponibilidad.js", "js/modelo/ModeloPrevision.js", "js/modelo/Aparcamiento.js",
   "js/fuentes/FuenteDisponibilidad.js", "js/datos/catalogo.js", "js/datos/RepositorioSupabase.js",

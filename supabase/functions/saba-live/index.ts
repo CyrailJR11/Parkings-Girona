@@ -10,8 +10,9 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 type Lectura = { total: number | null; free: number | null };
 type Fila = {
   parking_id: string; source: string; source_url: string; ok: boolean; error: string | null;
-  total: number | null; free: number | null; fetched_at: string;
+  total: number | null; free: number | null; fetched_at: string; free_since?: string | null;
 };
+type Previa = { parking_id: string; free: number | null; free_since: string | null };
 
 abstract class FuenteOperador {
   constructor(readonly parkingId: string, readonly url: string) {}
@@ -60,10 +61,20 @@ const FUENTES: FuenteOperador[] = [
   new SabaWeb("pompeu-fabra", SABA + "parking-saba-santa-caterina"),
 ];
 
+/** Guarda desde cuándo se repite el mismo número: así la web detecta datos congelados. */
+function marcarDesde(fila: Fila, previa: Previa | undefined, ahora: string): Fila {
+  if (fila.free == null) return { ...fila, free_since: previa?.free_since ?? null };
+  const igual = previa && previa.free === fila.free && previa.free_since;
+  return { ...fila, free_since: igual ? previa!.free_since : ahora };
+}
+
 Deno.serve(async () => {
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   const ahora = new Date().toISOString();
-  const filas = await Promise.all(FUENTES.map((f) => f.consultar(ahora))); // polimorfismo
+  const { data: previas } = await sb.from("parking_live").select("parking_id,free,free_since");
+  const porId = new Map((previas ?? []).map((p: Previa) => [p.parking_id, p]));
+  const filas = (await Promise.all(FUENTES.map((f) => f.consultar(ahora)))) // polimorfismo
+    .map((f) => marcarDesde(f, porId.get(f.parking_id), ahora));
   const { error } = await sb.from("parking_live").upsert(filas);
   return new Response(JSON.stringify({ rows: filas, error: error?.message ?? null }), { headers: { "Content-Type": "application/json" } });
 });

@@ -91,6 +91,22 @@ export class DisponibilidadPrevision extends Disponibilidad {
   pistaHtml() { return ""; }
 }
 
+/** El operador publica un número que lleva horas sin moverse: no nos fiamos. */
+export class DisponibilidadCongelada extends Disponibilidad {
+  #libres; #igualDesde; #fuente;
+  constructor({ libres, igualDesde, fuente, pista = null }) {
+    super({ pista });
+    this.#libres = libres; this.#igualDesde = igualDesde; this.#fuente = fuente;
+  }
+  get libres() { return this.#libres; }
+  get igualDesde() { return this.#igualDesde; }
+  get orden() { return 2; }
+  get colorTexto() { return color("muted"); }
+  textoMarcador() { return "?"; }
+  textoInsignia() { return "sin dato"; }
+  estadoHtml() { return `Disponibilidad desconocida · ${this.#fuente} marca ${this.#libres} libres sin cambios desde ${hace(this.#igualDesde)}, no es fiable`; }
+}
+
 /** No hay dato real ni aviso. */
 export class DisponibilidadDesconocida extends Disponibilidad {
   get orden() { return 2; }

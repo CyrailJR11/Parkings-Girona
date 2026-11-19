@@ -1,7 +1,7 @@
 // Controlador: une el modelo, las fuentes de datos y las vistas.
 import { $, formatoHora, hace, toast } from "./util.js";
 import { ModeloPrevision } from "./modelo/ModeloPrevision.js";
-import { ServicioDisponibilidad, FuenteOperadorEnVivo, FuenteAvisos, FuentePrevision, FuenteDesconocida } from "./fuentes/FuenteDisponibilidad.js";
+import { ServicioDisponibilidad, FuenteOperadorEnVivo, FuenteAvisos, FuenteDatoCongelado, FuentePrevision, FuenteDesconocida } from "./fuentes/FuenteDisponibilidad.js";
 import { VistaMapa } from "./vista/VistaMapa.js";
 import { VistaLista } from "./vista/VistaLista.js";
 import { VistaZonas } from "./vista/VistaZonas.js";
@@ -16,10 +16,11 @@ export class App {
   constructor({ parkings, zonas, repositorio }) {
     this.#parkings = parkings; this.#repo = repositorio;
     this.#prevision = new ModeloPrevision();
-    // El orden de la cadena es la prioridad: dato real > aviso > previsión > desconocido.
+    // El orden de la cadena es la prioridad: dato real > aviso > dato congelado > previsión > desconocido.
     this.#servicio = new ServicioDisponibilidad([
       new FuenteOperadorEnVivo(repositorio, "Saba"),
       new FuenteAvisos(repositorio),
+      new FuenteDatoCongelado(repositorio, "Saba"),
       new FuentePrevision(),
       new FuenteDesconocida(),
     ]);

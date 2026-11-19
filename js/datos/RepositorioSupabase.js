@@ -30,14 +30,17 @@ export class RepositorioSupabase {
     this.#avisos.set(fila.parking_id, lista);
   }
   #guardarEnVivo(fila) {
-    this.#enVivo.set(fila.parking_id, { libres: fila.free, total: fila.total, ok: fila.ok, actualizado: Date.parse(fila.fetched_at) || 0 });
+    this.#enVivo.set(fila.parking_id, {
+      libres: fila.free, total: fila.total, ok: fila.ok, actualizado: Date.parse(fila.fetched_at) || 0,
+      igualDesde: Date.parse(fila.free_since) || null, // desde cuándo publica el mismo número
+    });
   }
 
   async cargar() {
     const desde = new Date(Date.now() - RepositorioSupabase.VIDA_AVISO).toISOString();
     const [r1, r2] = await Promise.all([
       fetch(`${URL_BASE}/rest/v1/parking_reports?select=id,parking_id,status,created_at&created_at=gt.${encodeURIComponent(desde)}&order=created_at.desc&limit=500`, { headers: this.#cabeceras, cache: "no-store" }),
-      fetch(`${URL_BASE}/rest/v1/parking_live?select=parking_id,free,total,ok,fetched_at`, { headers: this.#cabeceras, cache: "no-store" }),
+      fetch(`${URL_BASE}/rest/v1/parking_live?select=parking_id,free,total,ok,fetched_at,free_since`, { headers: this.#cabeceras, cache: "no-store" }),
     ]);
     if (!r1.ok || !r2.ok) throw new Error("Supabase " + r1.status + "/" + r2.status);
     this.#avisos.clear();
